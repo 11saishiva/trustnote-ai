@@ -14,9 +14,13 @@ distribution already provides them, delete the local copies.
 
 ## Open items
 
-One placeholder remains, marked `[CITE: ...]` in `references.bib`: the RBI
-annual report needs a specific year and table, and one slot is reserved for
-prior work on Indian banknote authentication.
+No placeholders remain in the text or the bibliography.
+
+One value to verify against the primary source before submission: the
+Introduction cites 222,639 counterfeit notes detected in 2023-24 with 95.3%
+found at banks rather than the RBI. Those come from press coverage of the RBI
+Annual Report 2023-24, not from the PDF itself. Confirm them against the
+Currency Management chapter.
 
 Resolved by the primary author:
 

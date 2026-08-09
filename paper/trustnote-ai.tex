@@ -66,13 +66,17 @@ edge inference, image classification, dataset bias
 
 \section{Introduction}
 
-The Reserve Bank of India reports counterfeit notes detected across the banking
-system every year, and the detected figure understates circulation because notes
-that never reach a bank counter never enter the count~\cite{rbi_annual_report}.
-Verification hardware closes part of the gap. A ultraviolet lamp or a
+The Reserve Bank of India recorded 222{,}639 counterfeit notes in the banking
+system during 2023--24, of which banks rather than the Reserve Bank itself
+detected 95.3\%~\cite{rbi2024annual}. Both figures count notes that reached a
+counter. A counterfeit that circulates between a customer and a vegetable seller
+enters no table at all, so the published total sets a floor on circulation rather
+than a measure of it.
+
+Verification hardware closes part of the gap. An ultraviolet lamp or a
 magnetic-ink reader costs more than a small merchant will spend and travels
-poorly, so the transactions most exposed to counterfeits are screened by eye or
-not at all.
+poorly, so the transactions least covered by bank-counter detection are screened
+by eye or not at all.
 
 A classifier that runs on a phone changes the economics of that screening. This
 paper reports what such a classifier achieves, and what its headline accuracy
@@ -108,20 +112,21 @@ would separate the two.
 
 Automated banknote authentication divides into three families.
 
-\textbf{Sensor-based methods} read physical properties: ultraviolet
-fluorescence, infrared absorption, magnetic ink response, and paper thickness.
-These methods target the substrate that counterfeiters find hardest to
-reproduce, and they achieve the accuracy that central banks require. They also
-require dedicated hardware, which rules them out for the deployment target
-considered here.
+\textbf{Sensor-based and forensic methods} read physical properties:
+ultraviolet fluorescence, infrared absorption, magnetic ink response, and paper
+thickness. Verma and Ramakrishnan~\cite{verma2019forensic} document the obscure
+high-security features that forensic examiners use to adjudicate Indian notes,
+which are the features counterfeiters find hardest to reproduce. This family
+achieves the accuracy central banks require and needs dedicated hardware or a
+trained examiner, which rules it out for the deployment target considered here.
 
 \textbf{Hand-engineered visual features} extract security elements from
 photographs: the security thread, the latent image, microlettering, the
-watermark region, and the intaglio texture of the portrait. Systems in this
-family localize a region of interest, apply a filter bank or texture descriptor,
-and classify the response. Performance depends on localization accuracy, which
-degrades under the perspective and lighting variation typical of handheld
-capture~\cite{placeholder_indian_currency_survey}.
+watermark region, and the intaglio texture of the portrait. Singh et
+al.~\cite{singh2018image} localize such regions on Indian notes and classify the
+filter responses. Performance in this family depends on localization accuracy,
+which degrades under the perspective and lighting variation typical of handheld
+capture.
 
 \textbf{Learned representations} replace the feature engineering with a
 convolutional network. Transfer learning from ImageNet~\cite{deng2009imagenet}
@@ -132,6 +137,14 @@ motivates freezing them when target data is scarce. MobileNetV2 and
 V3~\cite{sandler2018mobilenetv2,howard2019mobilenetv3} extend the approach to
 mobile inference budgets through inverted residual blocks and
 squeeze-and-excitation attention~\cite{hu2018squeeze}.
+
+Bandu et al.~\cite{bandu2024indian} sit between the second and third families
+and give this paper its most useful point of comparison. They train CNNs on six
+individual security features of Indian notes rather than on the whole image, and
+report 91.66\% accuracy on \rupee500, 95.25\% on \rupee200, and 92.66\% on
+\rupee100. Their design encodes the assumption a human examiner would make, that
+authentication lives in the security features, and their accuracy is the price
+of localizing those features from photographs.
 
 Work in the third family reports accuracies above 95\% with regularity. Torralba
 and Efros~\cite{torralba2011bias} give the reason to read those numbers with
@@ -486,6 +499,17 @@ coarse, global, low-level statistics. Candidate sources for such a signal
 include print process (offset or inkjet reproduction versus intaglio), paper
 reflectance, color gamut differences from the reproduction pipeline, and the
 capture conditions under which each class was photographed.
+
+The comparison with Bandu et al.~\cite{bandu2024indian} sharpens the point.
+Their system localizes six security features on each note, which is where
+authentication evidence lives, and reports 91.66\% to 95.25\% depending on
+denomination. Ours ignores security features, resizes the whole note to
+$224 \times 224$, and reports 96.97\%. The two numbers come from different
+corpora and rank nothing, so we draw no benchmark claim from the ordering. What
+the ordering does suggest is that our task, as posed by our data, is easier than
+reading security features off a photograph. A method that attends to the
+forensically correct evidence should not be outperformed by one that discards
+it, unless the second method has found a shortcut the first declines to take.
 
 Some of those are legitimate counterfeit evidence. Print-process artifacts are
 real forensic signal, and a model keying on them is doing useful work. Capture

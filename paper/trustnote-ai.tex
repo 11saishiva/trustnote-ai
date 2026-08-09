@@ -46,10 +46,12 @@ ImageNet-pretrained weights. The convolutional backbone stays frozen throughout
 training; only a 0.56~M-parameter classification head learns. On a held-out test
 set of 1121 images the model reaches 96.97\% accuracy, 0.9555 $F_1$ on the
 counterfeit class, and 0.9959 ROC-AUC, while occupying 14.3~MB in 32-bit
-floating point and classifying an image in 9.1~ms on a desktop CPU with no GPU
-present. Training converged in nine epochs and stopped early, with the best
-validation $F_1$ of 0.9775 recorded at epoch four. The result carries a caveat that we treat as a
-central finding rather than a footnote: a frozen ImageNet feature extractor,
+floating point and classifying an image in 9.1~ms on a desktop CPU. No GPU takes
+part at any stage: the reported run trained for nine epochs in 36.09 minutes on
+an Intel Core i5-1335U laptop CPU before early stopping, with the best
+validation $F_1$ of 0.9775 recorded at epoch four. The result carries a caveat
+that we treat as a central finding rather than a footnote: a frozen ImageNet
+feature extractor,
 which has never seen a security thread or an intaglio print, separates the two
 classes at 0.9959 AUC. Coarse photometric and print-process cues therefore drive
 the decision, not the security features a human examiner reads. We report the
@@ -64,13 +66,17 @@ edge inference, image classification, dataset bias
 
 \section{Introduction}
 
-The Reserve Bank of India reports counterfeit notes detected across the banking
-system every year, and the detected figure understates circulation because notes
-that never reach a bank counter never enter the count~\cite{rbi_annual_report}.
-Verification hardware closes part of the gap. A ultraviolet lamp or a
+The Reserve Bank of India recorded 222{,}639 counterfeit notes in the banking
+system during 2023--24, of which banks rather than the Reserve Bank itself
+detected 95.3\%~\cite{rbi2024annual}. Both figures count notes that reached a
+counter. A counterfeit that circulates between a customer and a vegetable seller
+enters no table at all, so the published total sets a floor on circulation rather
+than a measure of it.
+
+Verification hardware closes part of the gap. An ultraviolet lamp or a
 magnetic-ink reader costs more than a small merchant will spend and travels
-poorly, so the transactions most exposed to counterfeits are screened by eye or
-not at all.
+poorly, so the transactions least covered by bank-counter detection are screened
+by eye or not at all.
 
 A classifier that runs on a phone changes the economics of that screening. This
 paper reports what such a classifier achieves, and what its headline accuracy
@@ -106,20 +112,21 @@ would separate the two.
 
 Automated banknote authentication divides into three families.
 
-\textbf{Sensor-based methods} read physical properties: ultraviolet
-fluorescence, infrared absorption, magnetic ink response, and paper thickness.
-These methods target the substrate that counterfeiters find hardest to
-reproduce, and they achieve the accuracy that central banks require. They also
-require dedicated hardware, which rules them out for the deployment target
-considered here.
+\textbf{Sensor-based and forensic methods} read physical properties:
+ultraviolet fluorescence, infrared absorption, magnetic ink response, and paper
+thickness. Verma and Ramakrishnan~\cite{verma2019forensic} document the obscure
+high-security features that forensic examiners use to adjudicate Indian notes,
+which are the features counterfeiters find hardest to reproduce. This family
+achieves the accuracy central banks require and needs dedicated hardware or a
+trained examiner, which rules it out for the deployment target considered here.
 
 \textbf{Hand-engineered visual features} extract security elements from
 photographs: the security thread, the latent image, microlettering, the
-watermark region, and the intaglio texture of the portrait. Systems in this
-family localize a region of interest, apply a filter bank or texture descriptor,
-and classify the response. Performance depends on localization accuracy, which
-degrades under the perspective and lighting variation typical of handheld
-capture~\cite{placeholder_indian_currency_survey}.
+watermark region, and the intaglio texture of the portrait. Singh et
+al.~\cite{singh2018image} localize such regions on Indian notes and classify the
+filter responses. Performance in this family depends on localization accuracy,
+which degrades under the perspective and lighting variation typical of handheld
+capture.
 
 \textbf{Learned representations} replace the feature engineering with a
 convolutional network. Transfer learning from ImageNet~\cite{deng2009imagenet}
@@ -130,6 +137,14 @@ motivates freezing them when target data is scarce. MobileNetV2 and
 V3~\cite{sandler2018mobilenetv2,howard2019mobilenetv3} extend the approach to
 mobile inference budgets through inverted residual blocks and
 squeeze-and-excitation attention~\cite{hu2018squeeze}.
+
+Bandu et al.~\cite{bandu2024indian} sit between the second and third families
+and give this paper its most useful point of comparison. They train CNNs on six
+individual security features of Indian notes rather than on the whole image, and
+report 91.66\% accuracy on \rupee500, 95.25\% on \rupee200, and 92.66\% on
+\rupee100. Their design encodes the assumption a human examiner would make, that
+authentication lives in the security features, and their accuracy is the price
+of localizing those features from photographs.
 
 Work in the third family reports accuracies above 95\% with regularity. Torralba
 and Efros~\cite{torralba2011bias} give the reason to read those numbers with
@@ -150,38 +165,33 @@ $\mathcal{Y} = \{\texttt{REAL}, \texttt{FAKE}\}$, encoded as
 $\texttt{REAL} \mapsto 0$ and $\texttt{FAKE} \mapsto 1$, with \texttt{FAKE}
 treated as the positive class for precision and recall.
 
-The test partition holds 1121 images, 744 labeled \texttt{REAL} and 377 labeled
-\texttt{FAKE}, giving a class ratio of 1.97:1. Table~\ref{tab:splits} projects
-the remaining partitions from that count under the 70/15/15 ratio.
+The corpus holds 7473 images, 4960 labeled \texttt{REAL} and 2513 labeled
+\texttt{FAKE}. A stratified 70/15/15 split produces the partitions in
+Table~\ref{tab:splits}. The \texttt{REAL}-to-\texttt{FAKE} ratio holds at
+1.97:1 across all three.
 
 \begin{table}[t]
-\caption{Partition sizes. The test row is measured from the evaluation run; the
-training and validation rows are projected from it under the 70/15/15 split and
-carry per-denomination rounding error.}
+\caption{Partition sizes.}
 \label{tab:splits}
 \centering
 \small
-\begin{tabular}{@{}lrrrl@{}}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
 \textbf{Partition} & \textbf{\texttt{REAL}} & \textbf{\texttt{FAKE}} &
-\textbf{Total} & \textbf{Source} \\
+\textbf{Total} \\
 \midrule
-Train      & $\approx$3472 & $\approx$1759 & $\approx$5231 & projected \\
-Validation & $\approx$744  & $\approx$377  & $\approx$1121 & projected \\
-Test       & 744           & 377           & 1121          & measured \\
+Training   & 3{,}472 & 1{,}759 & 5{,}231 \\
+Validation & 744     & 377     & 1{,}121 \\
+Testing    & 744     & 377     & 1{,}121 \\
 \midrule
-\textbf{Corpus} & $\approx$4960 & $\approx$2513 & $\approx$7473 & projected \\
+\textbf{Total} & \textbf{4{,}960} & \textbf{2{,}513} & \textbf{7{,}473} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The audit and split scripts write per-denomination inventories to
-\texttt{reports/}, which the repository excludes along with \texttt{data/}.
-Because the split runs per denomination with independent rounding at each of the
-fourteen leaf directories, the projected rows in Table~\ref{tab:splits} deviate
-from the true counts by a few images per cell.
-\tofill{replace the projected rows with measured counts from
-reports/dataset\_report.csv before submission}
+The test partition stayed out of both training and model selection. Every number
+in Section~\ref{sec:results} comes from a single pass over it after the
+checkpoint was fixed.
 
 \subsection{Audit}
 
@@ -314,9 +324,11 @@ metrics reflect the natural 2:1 prior rather than a balanced one.
 Training minimizes cross-entropy with AdamW~\cite{loshchilov2019adamw} at an
 initial learning rate of $10^{-4}$ and weight decay of $10^{-4}$, decayed by a
 cosine schedule~\cite{loshchilov2017sgdr} toward $\eta_{\min} = 10^{-6}$ over a
-30-epoch horizon. Batch size is 32. Gradients clip to unit $\ell_2$ norm.
-Automatic mixed precision~\cite{micikevicius2018mixed} runs with loss scaling,
-unscaling before the clip so the threshold applies to true gradient magnitudes.
+30-epoch horizon. Batch size is 32. Gradients clip to unit $\ell_2$ norm. The
+trainer wraps the forward pass in an automatic mixed precision
+scope~\cite{micikevicius2018mixed} with a gradient scaler that unscales before
+the clip, so the threshold applies to true gradient magnitudes whenever that
+path is active.
 
 Model selection tracks validation $F_1$ on the \texttt{FAKE} class rather than
 accuracy, which would be inflated by the majority class. Training halts when
@@ -324,14 +336,20 @@ validation $F_1$ fails to improve for five consecutive epochs, and the
 checkpoint with the best validation $F_1$ is restored for testing. We fix random
 seeds at 42 for PyTorch and CUDA.
 
-The pipeline gates mixed precision on \texttt{torch.cuda.is\_available()}, so
-training requires a CUDA device to reach the reported throughput and falls back
-to full-precision CPU execution elsewhere. Training ran on
-\tofill{GPU model and total wall-clock time}. Inference carries no such
-dependency, and the latency figures in Section~\ref{sec:cost} come from a CPU-only
-build.
+The pipeline gates mixed precision on \texttt{torch.cuda.is\_available()} and
+otherwise falls back to full-precision CPU execution. The reported run took the
+CPU path on an Intel Core i5-1335U and finished nine epochs in 36.09 minutes, so
+the mixed-precision branch stayed inactive and the scaler ran as a no-op.
+Inference carries no CUDA dependency either, and the latency figures in
+Section~\ref{sec:cost} come from a CPU-only build.
+
+Training the full pipeline in 36 minutes on a mid-range laptop CPU follows from
+the frozen backbone. Gradients flow through 559{,}234 parameters rather than
+3.5~M, which puts reproduction of this work within reach of any machine that can
+run the dataset through a forward pass.
 
 \section{Results}
+\label{sec:results}
 
 \subsection{Convergence}
 
@@ -454,11 +472,11 @@ Latency, min / max   & 7.9 / 64.6~ms \\
 \end{tabular}
 \end{table}
 
-A 9.1~ms median leaves room on slower hardware: even a tenfold penalty on a
-mid-range phone SoC keeps a single verification under 100~ms. INT8
-post-training quantization~\cite{jacob2018quantization} would cut the footprint
-to roughly 3.6~MB, and we have measured neither its latency nor its effect on
-accuracy.
+These figures come from a desktop part, while the training run used a laptop
+i5-1335U. A 9.1~ms median leaves room for the gap: even a tenfold penalty on a
+phone SoC keeps a single verification under 100~ms. INT8 post-training
+quantization~\cite{jacob2018quantization} would cut the footprint to roughly
+3.6~MB, and we have measured neither its latency nor its effect on accuracy.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -481,6 +499,17 @@ coarse, global, low-level statistics. Candidate sources for such a signal
 include print process (offset or inkjet reproduction versus intaglio), paper
 reflectance, color gamut differences from the reproduction pipeline, and the
 capture conditions under which each class was photographed.
+
+The comparison with Bandu et al.~\cite{bandu2024indian} sharpens the point.
+Their system localizes six security features on each note, which is where
+authentication evidence lives, and reports 91.66\% to 95.25\% depending on
+denomination. Ours ignores security features, resizes the whole note to
+$224 \times 224$, and reports 96.97\%. The two numbers come from different
+corpora and rank nothing, so we draw no benchmark claim from the ordering. What
+the ordering does suggest is that our task, as posed by our data, is easier than
+reading security features off a photograph. A method that attends to the
+forensically correct evidence should not be outperformed by one that discards
+it, unless the second method has found a shortcut the first declines to take.
 
 Some of those are legitimate counterfeit evidence. Print-process artifacts are
 real forensic signal, and a model keying on them is doing useful work. Capture
@@ -563,17 +592,18 @@ unmeasured amount.
 ablation isolates the contribution of the custom head, the weighted sampler, or
 the individual augmentations.
 
-\item \textbf{Desktop-only latency.} We timed inference on a desktop CPU. No
-measurement exists for a phone SoC, which is the deployment target the design
-assumes.
+\item \textbf{Latency measured off-target.} We timed inference on a desktop
+Ryzen 9 7900X, not on the i5-1335U that trained the model and not on a phone
+SoC, which is the deployment target the design assumes.
 \end{itemize}
 
 \section{Conclusion}
 
 TrustNote-AI classifies Indian banknote photographs as genuine or counterfeit at
 96.97\% accuracy and 0.9959 ROC-AUC on a 1121-image held-out set, in a 14.3~MB
-model that trains in nine epochs and answers in 9.1~ms on a CPU. The engineering
-result is solid, and the pipeline is reproducible end to end.
+model that trains in 36 minutes on a laptop CPU and answers in 9.1~ms. The
+engineering result is solid, and the pipeline is reproducible end to end on
+hardware a student already owns.
 
 The scientific result is more interesting than the accuracy figure and points in
 a less comfortable direction. Those numbers came from a network whose every

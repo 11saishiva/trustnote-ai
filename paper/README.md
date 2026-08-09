@@ -14,19 +14,17 @@ distribution already provides them, delete the local copies.
 
 ## Open items
 
-Three placeholders remain, marked `\tofill{...}` in the `.tex` (they render in
-red) and `[CITE: ...]` in `references.bib`:
+One placeholder remains, marked `[CITE: ...]` in `references.bib`: the RBI
+annual report needs a specific year and table, and one slot is reserved for
+prior work on Indian banknote authentication.
 
-1. **Training hardware** (`trustnote-ai.tex`, Optimization section) — GPU model
-   and total wall-clock training time.
-2. **Dataset counts** (`trustnote-ai.tex`, Table II) — `data/` and `reports/`
-   are gitignored, so the train and validation rows are projected from the
-   measured test partition under the 70/15/15 ratio. Run
-   `python scripts/dataset_audit.py` and replace them with measured
-   per-split and per-denomination counts.
-3. **Citations** (`references.bib`) — the RBI annual report needs a specific
-   year and table, and one slot is reserved for prior work on Indian banknote
-   authentication.
+Resolved by the primary author:
+
+- **Dataset counts** — 7,473 images (4,960 REAL / 2,513 FAKE), split 5,231 /
+  1,121 / 1,121. Now in Table I.
+- **Training hardware** — CPU only, Intel Core i5-1335U, 36.09 minutes over
+  nine epochs. No GPU was involved at any stage, so the mixed-precision branch
+  never executed.
 
 ## Numbers already verified against the repo
 
@@ -35,4 +33,6 @@ red) and `[CITE: ...]` in `references.bib`:
 - Training trajectory from `models/training_history.csv`: stopped at epoch 9,
   best validation F1 0.9775 at epoch 4.
 - Parameter counts and CPU latency measured by loading
-  `models/best_model.pth` with `strict=True`.
+  `models/best_model.pth` with `strict=True`. Latency was timed on a Ryzen 9
+  7900X, which is not the training machine; re-running the benchmark on the
+  i5-1335U would make the two numbers comparable.
